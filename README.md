@@ -2,11 +2,15 @@
 
 GLP stands for Go Licensing Processor. It is an utility that parses application's dependencies, gets their licenses and copyright information and writing gathered data into report file.
 
+## Supported languages
+
+* Go (dep)
+
 ## Supported report file formats
 
-*None yet.*
+* CSV
 
-## Supported VCSes and sites
+## Supported VCS and sites
 
 *None yet.*
 
