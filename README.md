@@ -4,7 +4,7 @@ GLP stands for Go Licensing Processor. It is an utility that parses application'
 
 ## Supported languages
 
-* Go (dep)
+* Go (dep and modules)
 
 ## Supported report file formats
 
@@ -12,7 +12,7 @@ GLP stands for Go Licensing Processor. It is an utility that parses application'
 
 ## Supported VCS and sites
 
-*None yet.*
+None yet. It executes HTTP request with ``?go-get=1`` parameter to get go-import and go-source data.
 
 ## Installation
 
