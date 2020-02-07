@@ -85,7 +85,7 @@ func (p *Project) process() {
 	for _, dep := range p.deps {
 		depDir, err := filer.FromDirectory(dep.LocalPath)
 		if err != nil {
-			log.Println("Failed to prepare directory path for depencendy license scan:", err.Error())
+			log.Println("Failed to prepare directory path for dependency license scan:", err.Error())
 			continue
 		}
 

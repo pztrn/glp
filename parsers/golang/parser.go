@@ -42,6 +42,8 @@ func (gp *golangParser) GetDependencies(flavor string, pkgPath string) []*struct
 	switch flavor {
 	case packageManagerDep:
 		deps = gp.getDependenciesFromDep(pkgPath)
+	case packageManagerGoMod:
+		deps = gp.getDependenciesFromModules(pkgPath)
 	}
 
 	// Return early if no dependencies was found.
