@@ -88,6 +88,10 @@ func (gp *golangParser) getDependenciesFromDep(pkgPath string) []*structs.Depend
 			dependency.VCS.Branch = "master"
 		}
 
+		// All dep-controlled dependencies are vendored. We should get
+		// it's path.
+		dependency.LocalPath = filepath.Join(pkgPath, "vendor", dep.Name)
+
 		deps = append(deps, dependency)
 
 		if configuration.Cfg.Log.Debug {

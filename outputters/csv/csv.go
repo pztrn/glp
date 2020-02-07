@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	headers = []string{"Module", "License", "Repository URL", "License URL", "Project", "Copyrights"}
+	headers = []string{"Module", "Version", "License", "Repository URL", "License URL", "Project", "Copyrights"}
 )
 
 // Responsible for pushing passed data into CSV file.
@@ -40,7 +40,7 @@ func (o *outputter) Write(deps []*structs.Dependency, outFile string) {
 
 	// Write dependencies information.
 	for _, dep := range deps {
-		_ = writer.Write([]string{dep.Name, dep.License.Name, dep.VCS.VCSPath, dep.License.URL, dep.Parent, dep.License.Copyrights})
+		_ = writer.Write([]string{dep.Name, dep.Version, dep.License.Name, dep.VCS.VCSPath, dep.License.URL, dep.Parent, dep.License.Copyrights})
 	}
 
 	writer.Flush()

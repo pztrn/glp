@@ -8,8 +8,13 @@ import (
 	"strings"
 
 	// local
+	"go.dev.pztrn.name/glp/configuration"
 	"go.dev.pztrn.name/glp/parsers"
 	"go.dev.pztrn.name/glp/structs"
+
+	// other
+	"gopkg.in/src-d/go-license-detector.v3/licensedb"
+	"gopkg.in/src-d/go-license-detector.v3/licensedb/filer"
 )
 
 // Project represents single project (or package) that was passed via
@@ -76,5 +81,47 @@ func (p *Project) process() {
 
 	p.deps = deps
 
-	// ToDo: get licensing information.
+	// Get licensing information for every dependency.
+	for _, dep := range p.deps {
+		depDir, err := filer.FromDirectory(dep.LocalPath)
+		if err != nil {
+			log.Println("Failed to prepare directory path for depencendy license scan:", err.Error())
+			continue
+		}
+
+		licenses, err1 := licensedb.Detect(depDir)
+		if err1 != nil {
+			log.Println("Failed to detect license for", dep.Name+":", err1.Error())
+
+			dep.License.Name = "Unknown"
+
+			continue
+		}
+
+		if configuration.Cfg.Log.Debug {
+			log.Printf("Got licenses result for '%s': %+v\n", dep.Name, licenses)
+		}
+
+		// Get highest ranked license.
+		var (
+			licenseName string
+			licenseRank float32
+		)
+
+		for name, result := range licenses {
+			if licenseRank < result.Confidence {
+				licenseName = name
+				licenseRank = result.Confidence
+			}
+		}
+
+		if licenseName == "" {
+			dep.License.Name = "Unknown"
+			continue
+		}
+
+		log.Printf("Got license for '%s': %s", dep.Name, licenseName)
+
+		dep.License.Name = licenseName
+	}
 }
