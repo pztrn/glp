@@ -3,6 +3,7 @@ package golang
 import (
 	// stdlib
 	"bytes"
+	"encoding/xml"
 	"io"
 	"log"
 	"net/http"
@@ -13,6 +14,17 @@ import (
 	"go.dev.pztrn.name/glp/httpclient"
 	"go.dev.pztrn.name/glp/structs"
 )
+
+// attrValue returns the attribute value for the case-insensitive key
+// `name', or the empty string if nothing is found.
+func attrValue(attrs []xml.Attr, name string) string {
+	for _, a := range attrs {
+		if strings.EqualFold(a.Name.Local, name) {
+			return a.Value
+		}
+	}
+	return ""
+}
 
 // Gets go-import and go-source data and fill it in dependency.
 func getGoData(dependency *structs.Dependency) {
@@ -34,95 +46,55 @@ func getGoData(dependency *structs.Dependency) {
 	// line-by-line for <head> parsing.
 	resp := bytes.NewBuffer(respBody)
 
-	var (
-		// This flag shows that we're currently parsing <head> from HTML.
-		headCurrentlyParsing bool
-	)
+	// Adopted headers parsing algo from Go itself.
+	// See https://github.com/golang/go/blob/95e1ea4598175a3461f40d00ce47a51e5fa6e5ea/src/cmd/go/internal/get/discovery.go
+
+	decoder := xml.NewDecoder(resp)
+	decoder.Strict = false
 
 	for {
-		line, err := resp.ReadString('\n')
-		if err != nil && err != io.EOF {
-			log.Fatalln("Failed to read HTML response line-by-line:", err.Error())
-		} else if err != nil && err == io.EOF {
+		token, err := decoder.Token()
+		if err != nil {
+			if err != io.EOF {
+				log.Fatalln("Failed to parse dependency's go-source and go-import things:", err.Error())
+			}
+
 			break
 		}
 
-		if headCurrentlyParsing {
-			// Check for go-import data.
-			if strings.Contains(line, `<meta name="go-import"`) {
-				// Get content.
-				// Import things are in element #4.
-				lineSplitted := strings.Split(line, `"`)
+		if e, ok := token.(xml.StartElement); ok && strings.EqualFold(e.Name.Local, "body") {
+			break
+		}
 
-				// Check line length. This is not so good approach, but
-				// should work for 99% of dependencies.
-				if len(lineSplitted) < 5 {
-					log.Println("Got line: '" + line + "', but it cannot be parsed. Probably badly formed - tag itself appears to be incomplete. Skipping")
-					continue
-				}
+		if e, ok := token.(xml.EndElement); ok && strings.EqualFold(e.Name.Local, "head") {
+			break
+		}
 
-				if len(lineSplitted) > 5 {
-					log.Println("Got line: '" + line + "', but it cannot be parsed. Probably badly formed - line where meta tag is located appears to be too long. Skipping")
-					continue
-				}
+		e, ok := token.(xml.StartElement)
+		if !ok || !strings.EqualFold(e.Name.Local, "meta") {
+			continue
+		}
 
-				// Import line contains data like VCS name and VCS URL.
-				// They're delimited with whitespace.
-				importDataSplitted := strings.Split(lineSplitted[3], " ")
+		// Check if we haven't found "go-import" or "go-source" in token's
+		// attributes.
+		if attrValue(e.Attr, "name") != "go-import" && attrValue(e.Attr, "name") != "go-source" {
+			continue
+		}
 
-				// Import line should contain at least 3 elements.
-				if len(importDataSplitted) < 3 {
-					log.Println("Got line: '" + line + "', but it cannot be parsed. Probably badly formed - import data is too small. Skipping")
-					continue
-				}
-
-				// Fill dependency data with this data.
-				// First element is a module name and we do not actually
-				// need it, because it is already filled previously.
-				dependency.VCS.VCS = importDataSplitted[1]
-				dependency.VCS.VCSPath = importDataSplitted[2]
-			}
-
-			// Check for go-source data.
-			if strings.Contains(line, `<meta name="go-source"`) {
-				// Get content.
-				// Import things are in element #4.
-				lineSplitted := strings.Split(line, `"`)
-
-				// Check line length. This is not so good approach, but
-				// should work for 99% of dependencies.
-				if len(lineSplitted) < 5 {
-					log.Println("Got line: '" + line + "', but it cannot be parsed. Probably badly formed - tag itself appears to be incomplete. Skipping")
-					continue
-				}
-
-				if len(lineSplitted) > 5 {
-					log.Println("Got line: '" + line + "', but it cannot be parsed. Probably badly formed - line where meta tag is located appears to be too long. Skipping")
-					continue
-				}
-
-				// Source line contains data like VCS paths templates.
-				// They're delimited with whitespace.
-				sourceDataSplitted := strings.Split(lineSplitted[3], " ")
-
-				// Source data line should contain at least 3 elements.
-				if len(sourceDataSplitted) < 4 {
-					log.Println("Got line: '" + line + "', but it cannot be parsed. Probably badly formed - source data is too small. Skipping")
-					continue
-				}
-
-				// Fill dependency data.
-				dependency.VCS.SourceURLDirTemplate = sourceDataSplitted[2]
-				dependency.VCS.SourceURLFileTemplate = sourceDataSplitted[3]
+		// Parse go-import data first.
+		if attrValue(e.Attr, "name") == "go-import" {
+			if f := strings.Fields(attrValue(e.Attr, "content")); len(f) == 3 {
+				dependency.VCS.VCS = f[1]
+				dependency.VCS.VCSPath = f[2]
 			}
 		}
 
-		if strings.Contains(strings.ToLower(line), "<head>") {
-			headCurrentlyParsing = true
-		}
-
-		if strings.Contains(strings.ToLower(line), "</head>") {
-			headCurrentlyParsing = false
+		// Then - go-source data.
+		if attrValue(e.Attr, "name") == "go-source" {
+			if f := strings.Fields(attrValue(e.Attr, "content")); len(f) == 4 {
+				dependency.VCS.SourceURLDirTemplate = f[2]
+				dependency.VCS.SourceURLFileTemplate = f[3]
+			}
 		}
 	}
 
