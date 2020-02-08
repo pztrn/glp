@@ -83,6 +83,14 @@ func (gp *golangParser) getDependenciesFromDep(pkgPath string) []*structs.Depend
 			Version: dep.Version,
 		}
 
+		// Name is used in URLs composing, so we should get rid of
+		// possible versioning from it, which will occur if dependency
+		// supports both go modules and other dependency managers.
+		depName := strings.Split(dependency.Name, "/")
+		if strings.HasPrefix(depName[len(depName)-1], "v") && len(depName[len(depName)-1]) == 2 {
+			dependency.Name = strings.Join(depName[:len(depName)-1], "/")
+		}
+
 		// If branch is empty - assume master.
 		if dependency.VCS.Branch == "" {
 			dependency.VCS.Branch = "master"

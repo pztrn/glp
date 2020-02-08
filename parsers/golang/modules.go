@@ -93,6 +93,14 @@ func (gp *golangParser) getDependenciesFromModules(pkgPath string) []*structs.De
 			Version:   version,
 		}
 
+		// Name is used in URLs composing, so we should get rid of
+		// possible versioning from it, which will occur if dependency
+		// supports both go modules and other dependency managers.
+		depName := strings.Split(dependency.Name, "/")
+		if strings.HasPrefix(depName[len(depName)-1], "v") && len(depName[len(depName)-1]) == 2 {
+			dependency.Name = strings.Join(depName[:len(depName)-1], "/")
+		}
+
 		deps = append(deps, dependency)
 
 		// Mark dependency as processed.
