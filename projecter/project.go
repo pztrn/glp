@@ -2,6 +2,7 @@ package projecter
 
 import (
 	// stdlib
+	"bufio"
 	"log"
 	"os"
 	"path/filepath"
@@ -61,6 +62,31 @@ func (p *Project) initialize(packagePath string) {
 	if err != nil {
 		log.Fatalln("Failed to get absolute path for package '"+p.packagePath+":", err.Error())
 	}
+}
+
+// Parses license file for copyrights.
+func (p *Project) parseLicenseForCopyrights(licencePath string) []string {
+	f, err := os.Open(licencePath)
+	if err != nil {
+		log.Println("Failed to open license file for reading:", err.Error())
+		return nil
+	}
+
+	var copyrights []string
+
+	// Read file data line by line.
+	gosum := bufio.NewScanner(f)
+	gosum.Split(bufio.ScanLines)
+
+	for gosum.Scan() {
+		line := gosum.Text()
+
+		if strings.HasPrefix(strings.ToLower(line), "copyright ") && !strings.Contains(strings.ToLower(line), "notice") {
+			copyrights = append(copyrights, line)
+		}
+	}
+
+	return copyrights
 }
 
 // Starts project parsing.
@@ -137,8 +163,12 @@ func (p *Project) process() {
 
 		dep.License.Name = licenseName
 
-		// Generate license path.
+		// Generate license URL.
 		urlFormatter := strings.NewReplacer("{dir}", "", "{/dir}", "", "{file}", licenseFile, "{/file}", licenseFile, "#L{line}", "")
 		dep.License.URL = urlFormatter.Replace(dep.VCS.SourceURLFileTemplate)
+
+		// As we should have dependency locally available we should try
+		// to parse license file to get copyrights.
+		dep.License.Copyrights = p.parseLicenseForCopyrights(filepath.Join(dep.LocalPath, licenseFile))
 	}
 }

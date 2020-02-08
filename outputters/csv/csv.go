@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	// local
 	"go.dev.pztrn.name/glp/structs"
@@ -40,7 +41,7 @@ func (o *outputter) Write(deps []*structs.Dependency, outFile string) {
 
 	// Write dependencies information.
 	for _, dep := range deps {
-		_ = writer.Write([]string{dep.Name, dep.Version, dep.License.Name, dep.VCS.VCSPath, dep.License.URL, dep.Parent, dep.License.Copyrights})
+		_ = writer.Write([]string{dep.Name, dep.Version, dep.License.Name, dep.VCS.VCSPath, dep.License.URL, dep.Parent, strings.Join(dep.License.Copyrights, ",")})
 	}
 
 	writer.Flush()

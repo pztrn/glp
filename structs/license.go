@@ -1,7 +1,7 @@
 package structs
 
 type License struct {
-	Copyrights string
+	Copyrights []string
 	Name       string
 	URL        string
 }
