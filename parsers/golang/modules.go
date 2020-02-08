@@ -101,6 +101,16 @@ func (gp *golangParser) getDependenciesFromModules(pkgPath string) []*structs.De
 			dependency.Name = strings.Join(depName[:len(depName)-1], "/")
 		}
 
+		// Version might contain "+incompatible", which might break
+		// license URL generation.
+		if strings.Contains(dependency.Version, "incompatible") {
+			dependency.Version = strings.Split(dependency.Version, "+incompat")[0]
+		}
+
+		// As we're using specific version - we should assume it as
+		// branch name.
+		dependency.VCS.Branch = dependency.Version
+
 		deps = append(deps, dependency)
 
 		// Mark dependency as processed.

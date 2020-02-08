@@ -83,6 +83,11 @@ func (p *Project) process() {
 
 	// Get licensing information for every dependency.
 	for _, dep := range p.deps {
+		// Prepare dependency's things. For now - only check if
+		// file/directory templates defined and, if not, generate
+		// them.
+		dep.VCS.FormatSourcePaths()
+
 		depDir, err := filer.FromDirectory(dep.LocalPath)
 		if err != nil {
 			log.Println("Failed to prepare directory path for dependency license scan:", err.Error())
@@ -104,6 +109,7 @@ func (p *Project) process() {
 
 		// Get highest ranked license.
 		var (
+			licenseFile string
 			licenseName string
 			licenseRank float32
 		)
@@ -112,6 +118,13 @@ func (p *Project) process() {
 			if licenseRank < result.Confidence {
 				licenseName = name
 				licenseRank = result.Confidence
+
+				for fileName, confidence := range result.Files {
+					if confidence == licenseRank {
+						licenseFile = fileName
+						break
+					}
+				}
 			}
 		}
 
@@ -123,5 +136,9 @@ func (p *Project) process() {
 		log.Printf("Got license for '%s': %s", dep.Name, licenseName)
 
 		dep.License.Name = licenseName
+
+		// Generate license path.
+		urlFormatter := strings.NewReplacer("{dir}", "", "{/dir}", "", "{file}", licenseFile, "{/file}", licenseFile, "#L{line}", "")
+		dep.License.URL = urlFormatter.Replace(dep.VCS.SourceURLFileTemplate)
 	}
 }
