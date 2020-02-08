@@ -88,6 +88,11 @@ func (gp *golangParser) getDependenciesFromDep(pkgPath string) []*structs.Depend
 			dependency.VCS.Branch = "master"
 		}
 
+		// If version is empty - write branch name here with commit hash.
+		if dependency.Version == "" {
+			dependency.Version = dependency.VCS.Revision + "@" + dependency.VCS.Branch
+		}
+
 		// All dep-controlled dependencies are vendored. We should get
 		// it's path.
 		dependency.LocalPath = filepath.Join(pkgPath, "vendor", dep.Name)
