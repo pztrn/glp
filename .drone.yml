@@ -1,0 +1,21 @@
+---
+kind: pipeline
+type: docker
+name: lint and test
+
+steps:
+  - name: lint
+    image: code.pztrn.name/containers/mirror/golangci/golangci-lint:v1.46.2
+    pull: if-not-exists
+    environment:
+      CGO_ENABLED: 0
+    commands:
+      - golangci-lint run ./...
+
+  - name: test
+    image: code.pztrn.name/containers/mirror/golang:1.18.3-alpine
+    pull: if-not-exists
+    environment:
+      CGO_ENABLED: 0
+    commands:
+      - go test ./...
